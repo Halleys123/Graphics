@@ -1,4 +1,5 @@
 #include "WndProc.h"
+#include "glad/glad.h"
 
 LRESULT WndProc(HWND hWnd, UINT msg, WPARAM wParam, LPARAM lParam)
 {

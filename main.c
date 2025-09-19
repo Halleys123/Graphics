@@ -4,6 +4,7 @@
 int WINAPI WinMain(HINSTANCE hInstance, HINSTANCE hPrevInstance, PSTR cmdLine, int code)
 {
     WNDCLASS wndCls = {0};
+
     wndCls.lpszClassName = "FragmentShader";
     wndCls.lpfnWndProc = WndProc;
     wndCls.hInstance = hInstance;
