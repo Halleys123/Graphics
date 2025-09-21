@@ -1,0 +1,7 @@
+{
+  "files.associations": {
+    "*.json": "json",
+    "windowsx.h": "c",
+    "pixelformat.h": "c"
+  }
+}

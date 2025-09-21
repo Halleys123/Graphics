@@ -35,7 +35,7 @@ INCLUDE_PATHS := $(MSVC_INCLUDE);$(MSVC_ATLMFC_INCLUDE);$(WINDOWS_SDK_WINRT);$(W
 
 # Library configuration
 LIBPATH_FLAGS := /LIBPATH:"$(MSVC_LIB_PATH)" /LIBPATH:"$(MSVC_ATLMFC_LIB_PATH)" /LIBPATH:"$(WINDOWS_SDK_UM_LIB)" /LIBPATH:"$(WINDOWS_SDK_UCRT_LIB)"
-LIBS := User32.lib gdi32.lib
+LIBS := User32.lib gdi32.lib opengl32.lib 
 
 # Compiler flags
 CFLAGS := /nologo /Zi
