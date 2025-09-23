@@ -1,8 +1,13 @@
 #include <Windows.h>
 #include "WndProc.h"
+#include <stdio.h>
 
 int WINAPI WinMain(HINSTANCE hInstance, HINSTANCE hPrevInstance, PSTR cmdLine, int code)
 {
+    AllocConsole();
+    freopen("CONOUT$", "w", stdout);
+    freopen("CONIN$", "r", stdin);
+
     WNDCLASS wndCls = {0};
 
     wndCls.lpszClassName = "FragmentShader";
