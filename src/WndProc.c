@@ -1,8 +1,12 @@
+#define STB_IMAGE_IMPLEMENTATION
+
 #include "WndProc.h"
 #include "glad/glad.h"
 #include "pixelFormat.h"
 #include <stdio.h>
 #include <math.h>
+
+#include "stb_image.h"
 
 #define PI 3.1415
 
@@ -10,14 +14,28 @@ LRESULT WndProc(HWND hWnd, UINT msg, WPARAM wParam, LPARAM lParam)
 {
     static HDC hdc;
     static HGLRC RenderingContext;
-    static GLuint VAO, VBO;
-    // Equilateral triangle centered at origin, height = 1.0
-    static float triangle[] = {
-        // Position      // Color (R, G, B)
-        0.0f, 0.5774f, 1.0f, 0.0f, 0.0f,   // Top vertex: Red
-        -0.5f, -0.2887f, 0.0f, 1.0f, 0.0f, // Bottom left: Green
-        0.5f, -0.2887f, 0.0f, 0.0f, 1.0f   // Bottom right: Blue
+    static GLuint VAO, VBO, EBO;
+    static GLuint texture = 0;
+
+    static char *img = NULL;
+    static int width, height, components;
+
+    static float cube[] = {
+        // Front face          // Color        // Texture
+        -0.5f, 0.5f, 0.0f, 1.0f, 0.0f, 0.0f, 0.0f, 1.0f,  // 0: Front top left
+        0.5f, 0.5f, 0.0f, 1.0f, 1.0f, 0.0f, 1.0f, 1.0f,   // 1: Front top right
+        -0.5f, -0.5f, 0.0f, 1.0f, 0.0f, 1.0f, 0.0f, 0.0f, // 2: Front bottom left
+        0.5f, -0.5f, 0.0f, 1.0f, 1.0f, 1.0f, 1.0f, 0.0f,  // 3: Front bottom right
+        0.8f, -0.8f, 0.0f, 1.0f, 1.0f, 1.0f, 0.8f, 0.0f,  // 3: Front bottom right
+        1.0f, -1.0f, 0.0f, 1.0f, 1.0f, 1.0f, 1.0f, 0.0f,  // 3: Front bottom right
+        1.0f, -0.5f, 0.0f, 1.0f, 1.0f, 1.0f, 1.0f, 0.0f,  // 3: Front bottom right
     };
+
+    static int cubeE[] = {
+        // Front face
+        0, 1, 2, // a
+        1, 3, 2, // b
+        4, 5, 6};
     static GLuint shaderProgram;
     switch (msg)
     {
@@ -107,21 +125,71 @@ LRESULT WndProc(HWND hWnd, UINT msg, WPARAM wParam, LPARAM lParam)
         // init
         glGenVertexArrays(1, &VAO);
         glGenBuffers(1, &VBO);
+        glGenBuffers(1, &EBO);
 
         glBindVertexArray(VAO);
         glBindBuffer(GL_ARRAY_BUFFER, VBO);
-        // Add data to VBo
-        glBufferData(GL_ARRAY_BUFFER, sizeof(triangle), triangle, GL_STATIC_DRAW);
+        glBindBuffer(GL_ELEMENT_ARRAY_BUFFER, EBO);
 
+        // Add data to VBo
+        glBufferData(GL_ARRAY_BUFFER, sizeof(cube), cube, GL_STATIC_DRAW);
+        glBufferData(GL_ELEMENT_ARRAY_BUFFER, sizeof(cubeE), cubeE, GL_STATIC_DRAW);
         // add data to vao
-        glVertexAttribPointer(0, 2, GL_FLOAT, GL_FALSE, 5 * sizeof(GLfloat), (void *)0);
+        glVertexAttribPointer(0, 3, GL_FLOAT, GL_FALSE, 8 * sizeof(GLfloat), (void *)0);
         glEnableVertexAttribArray(0);
 
-        glVertexAttribPointer(1, 3, GL_FLOAT, GL_FALSE, 5 * sizeof(GLfloat), (void *)(2 * sizeof(GLfloat)));
+        glVertexAttribPointer(1, 3, GL_FLOAT, GL_FALSE, 8 * sizeof(GLfloat), (void *)(3 * sizeof(float)));
         glEnableVertexAttribArray(1);
+
+        glVertexAttribPointer(2, 2, GL_FLOAT, GL_FALSE, 8 * sizeof(GLfloat), (void *)(6 * sizeof(float)));
+        glEnableVertexAttribArray(2);
 
         glBindVertexArray(0);
         glBindBuffer(GL_ARRAY_BUFFER, 0);
+
+        // Texture generation
+        img = stbi_load("../texture/wood.jpg", &width, &height, &components, 0);
+
+        if (!img)
+        {
+            printf("\x1b[38;2;200;40;0mError: loading texture image\x1b[0m");
+            return 1;
+        }
+
+        glGenTextures(1, &texture);
+        glActiveTexture(texture);
+        glBindTexture(GL_TEXTURE_2D, texture);
+
+        glPixelStorei(GL_UNPACK_ALIGNMENT, 1);
+
+        // glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, GL_NEAREST);
+        // glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, GL_NEAREST);
+        glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, GL_LINEAR_MIPMAP_LINEAR);
+        glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, GL_LINEAR);
+        glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_S, GL_REPEAT);
+        glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_T, GL_REPEAT);
+
+        GLenum srcFormat = GL_RGB;
+        GLenum internalFormat = GL_RGB;
+        if (components == 4)
+        {
+            srcFormat = GL_RGBA;
+            internalFormat = GL_RGBA;
+        }
+        else if (components == 1)
+        {
+            srcFormat = GL_RED;
+            internalFormat = GL_R8;
+        }
+
+        glTexImage2D(GL_TEXTURE_2D, 0, internalFormat, width, height, 0, srcFormat, GL_UNSIGNED_BYTE, img);
+        glGenerateMipmap(GL_TEXTURE_2D);
+
+        GLuint tex0Uni = glGetUniformLocation(shaderProgram, "tex0");
+        glUniform1i(tex0Uni, 0);
+
+        glBindTexture(GL_TEXTURE_2D, 0);
+        stbi_image_free(img);
 
         break;
 
@@ -135,17 +203,22 @@ LRESULT WndProc(HWND hWnd, UINT msg, WPARAM wParam, LPARAM lParam)
     break;
 
     case WM_PAINT:
+
         glClearColor(0.5f, 0.5f, 0.5f, 1.0f);
         glClear(GL_COLOR_BUFFER_BIT);
         glUseProgram(shaderProgram);
+        glBindTexture(GL_TEXTURE_2D, texture);
+
         glBindVertexArray(VAO);
-        glDrawArrays(GL_TRIANGLES, 0, 3);
+        glDrawElements(GL_TRIANGLES, 9, GL_UNSIGNED_INT, 0);
         SwapBuffers(hdc);
 
         break;
 
     case WM_CLOSE:
+        glDeleteTextures(1, &texture);
         wglDeleteContext(RenderingContext);
+
         ReleaseDC(hWnd, hdc);
         DestroyWindow(hWnd);
         return 0;
